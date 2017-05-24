@@ -1,42 +1,50 @@
 'use strict';
 function printReceipt(inputs) {
-  inputs = getInputs(inputs);
-  let cartItems = bulidCartItems(inputs);
-  console.log(bulidReceiptText(cartItems));
+  let objectInputs = calculateCount(inputs);
+  objectInputs = calculatePromotions(objectInputs);
+  let receiptItems = buildCartItems(objectInputs);
+  console.log(bulidReceiptText(receiptItems));
 }
 
-function getInputs(inputs) {
-  let result = []
-  inputs.forEach((element,index)=> {
-    let array = []
-    if(!result.find(item=>item===element)) {
-      if(element.length=10) {
-        result.push({barcode: element, count: 1})
-      }else {
-        array = element.split('-')
-        result.push({barcode:array[0],count:array[1]})
-      }
+function calculateCount(inputs) {
+  let objectInputs = []
+  inputs.forEach(element => {
+    if (element.length === 10) {
+      if (!objectInputs.find(item => item.barcode === element))
+        objectInputs.push({barcode: element, count: 1})
+      else objectInputs[objectInputs.findIndex(item=>item.barcode===element)].count++
     }
-    else{
-      if(element.length=10) result[result.indexOf(element).count++]
-      else result[result.indexOf(element).count+=array[1]]
+    else {
+      let array = element.split('-')
+      if (!objectInputs.find(item => item.barcode === array[0]))
+        objectInputs.push({barcode: array[0], count: parseFloat(array[1])})
+      else objectInputs[objectInputs.findIndex(item=>item.barcode===array[0])].count += parseFloat(array[1])
     }
   })
-  return result
-  // let allItems = loadAllItems()
-  // return Array.from({length:inputs.length},(v,i)=> {
-  //   return allItems.find(element=>element.barcode===inputs[i])
-  // })
+
+  return objectInputs
 }
+function calculatePromotions(inputs) {
+  let promotionsItems = loadPromotions()[0].barcodes;
+  inputs.forEach(elemtne=>{
 
-function bulidCartItems(inputs) {
-  let receiptItems = [];
+    if(promotionsItems.some(item=>item===elemtne.barcode))
+      elemtne.discount=Math.floor(elemtne.count/3)
+    else elemtne.discount=0
+  })
+  return inputs
+}
+function buildCartItems(inputs) {
+  let receiptItems = []
+  let allItems = loadAllItems()
 
-  inputs.forEach(element => {
-    if (!receiptItems.find(item => item.name === element.name)) {
-      let count = inputs.filter(item => item.name === element.name).length
-      receiptItems.push({name: element.name, count: count + element.unit, price: element.price, sum: count * element.price})
-    }
+  inputs.forEach(element=> {
+    let index = allItems.findIndex(item=>item.barcode===element.barcode)
+    receiptItems.push({name:allItems[index].name,
+      count:element.count+allItems[index].unit,
+      price:allItems[index].price,
+      discount:element.discount,
+      sum:(parseFloat(element.count)-parseInt(element.discount))*allItems[index].price})
   })
 
   return receiptItems;
@@ -45,10 +53,12 @@ function bulidCartItems(inputs) {
 function bulidReceiptText(array) {
   let receiptText = '***<没钱赚商店>收据***\n'
   let total = 0
+  let save = 0
   array.forEach(element => {
-    total +=element.sum
+    total += element.sum
+    save +=parseFloat(element.discount)*element.price;
     receiptText += `名称：${element.name}，数量：${element.count}，单价：${element.price.toFixed(2)}(元)，小计：${element.sum.toFixed(2)}(元)\n`
   })
-  receiptText += `----------------------\n总计：${total.toFixed(2)}(元)\n**********************`
+  receiptText += `----------------------\n总计：${total.toFixed(2)}(元)\n节省：${save.toFixed(2)}(元)\n**********************`
   return receiptText;
 }
